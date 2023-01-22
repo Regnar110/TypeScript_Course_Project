@@ -19,13 +19,16 @@ interface Project_Interface {
     people_number:number
 }
 
+function Validator(target:any) {
+    console.log(target)
+}
+
 class Project_List { //Obiekt listy projektów. Do niego dodawane sa poszczególne nowe instancje klasy Project.
     projectList:Project_Interface[]= []
     constructor() {
     }
 
     get showProjects() {
-        console.log(this.projectList);
         return this.projectList
     }
 
@@ -33,8 +36,6 @@ class Project_List { //Obiekt listy projektów. Do niego dodawane sa poszczegól
         this.projectList.push(project)
     } 
 }
-
-
 class Project implements Project_Interface{
     constructor(
         public title:string, 
@@ -46,8 +47,8 @@ class Project implements Project_Interface{
 
 // Inicjalizacja project input Template
 function initProjectInputTemplate():Project_inputs {
-        let project_input_template_clone = project_input_template.content.cloneNode(true)
-        app_container.appendChild(project_input_template_clone)
+        let project_input_template_CLONE = project_input_template.content.cloneNode(true)
+        app_container.appendChild(project_input_template_CLONE)
 
         const project_input_title = document.getElementById("title") as HTMLInputElement
         const project_input_description = document.getElementById("description") as HTMLInputElement
@@ -67,21 +68,60 @@ function initProjectInputTemplate():Project_inputs {
 //Wywołanie inicjalizacji
 const {project_list, title_input, description_input, people_input, input_form}:Project_inputs = initProjectInputTemplate()
 
+const initializeProjectList = (project:Project[]) => {
+    let project_list_template_CLONE = project_list_template.content.cloneNode(true)
+    app_container.appendChild(project_list_template_CLONE);
+    const lastProjectAdded:Project = project[project.length-1]
+    const appProjectListContainer = document.querySelector('.projects') as HTMLElement
+    console.log(appProjectListContainer.lastElementChild)
+}
 
-//KOD
+const initializeSingleProject = (project:Project) => {
+    const appSingleProjectListEl = app_container.querySelector("li") as HTMLLIElement
+    while (appSingleProjectListEl.firstChild && appSingleProjectListEl.lastChild) { // usuwa ostatnie node elementy. Tzn że będzie wyświetlany tylko ostatni projekt
+        appSingleProjectListEl.removeChild(appSingleProjectListEl.lastChild);
+      }
+    //Tworzenie elementów dzieci dla elementu li 
+    let singlePrHeader = document.createElement("h2") as HTMLHeadElement;
+    let singlePrDescSpan = document.createElement("span") as HTMLSpanElement;
+    let singlePrPeopleNUmSpan = document.createElement("span") as HTMLSpanElement;
+    //Ustawiamy wartości dla elementów sekcji
+    singlePrDescSpan.textContent = `Project Description: ${project.description}`
+    singlePrPeopleNUmSpan.textContent = `People commited to project: ${project.people_number}`
+    singlePrHeader.textContent = project.title
+    //tablica z poszczególnymi elementami, które zostaną doczepione jako dzieci do li
+    let childNodesForSingleProject = [singlePrHeader, singlePrDescSpan, singlePrPeopleNUmSpan]
+    for(let el of childNodesForSingleProject) {// dodanie stworzonych elementów do elementu rodzica LI
+        appSingleProjectListEl.appendChild(el)
+    }
+}
 
+
+const  initializeProjectsTemplates = (project:Project[]) => { // Funkcja inicjalizująca wzorce singleProject i Project List. 
+    let single_project_template_CLONE = single_project_template.content.cloneNode(true);
+    app_container.appendChild(single_project_template_CLONE);
+    initializeSingleProject(project[project.length-1]);
+    initializeProjectList(project) // stworzenie listy projektów
+}
 //EventListener dla przycisku zatwierdzania formy
 
 const input_form_submit = (
     e:any,
-    title_input:HTMLInputElement, 
-    description_input: HTMLInputElement, 
-    people_input:HTMLInputElement
+    ...htmlInputs:HTMLInputElement[]
     ) => {
-        e.preventDefault()
-        const project = new Project(title_input.value, description_input.value, +people_input.value)
-        project_list?.addProjectToList(project)
-        project_list?.showProjects
+        e.preventDefault();
+        const [title_input, description_input, people_input] = htmlInputs;
+        if(title_input.value.length > 0 && description_input.value.length > 0 && +people_input.value > 0 && +people_input.value < 10) {
+            const project = new Project(title_input.value, description_input.value, +people_input.value)
+            project_list.addProjectToList(project)
+            const projecListArray = project_list.showProjects
+            for(let el of htmlInputs) {
+                el.value = ""
+            }
+            initializeProjectsTemplates(projecListArray)
+        } else {
+            alert("User input fiels cant be empty")
+        }
     }
 
-input_form.addEventListener("submit", (e) => input_form_submit(e, title_input!, description_input!, people_input!)) 
+input_form.addEventListener("submit", (e) => input_form_submit(e, title_input, description_input, people_input)) 

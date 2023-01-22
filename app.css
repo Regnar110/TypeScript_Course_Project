@@ -125,3 +125,17 @@ button:active {
   border: 1px solid #ff0062;
   background: #f7f7f7;
 }
+
+
+#app li {
+  display: flex;
+  flex-direction: column;
+}
+
+#app li:nth-child(1) {
+  font-size: 30px;
+}
+
+#app li span {
+  font-size:  20px;
+}
