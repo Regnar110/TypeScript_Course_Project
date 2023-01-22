@@ -6,11 +6,11 @@ const single_project_template = document.getElementById("single-project") as HTM
 const project_list_template = document.getElementById("project-list") as HTMLTemplateElement
 
 interface Project_inputs {
-    project_list?: Project_List
-    title_input?: HTMLInputElement
-    description_input?: HTMLInputElement
-    people_input?: HTMLInputElement
-    input_form?: HTMLFormElement
+    project_list: Project_List
+    title_input: HTMLInputElement
+    description_input: HTMLInputElement
+    people_input: HTMLInputElement
+    input_form: HTMLFormElement
 }
 
 interface Project_Interface {
@@ -84,4 +84,4 @@ const input_form_submit = (
         project_list?.showProjects
     }
 
-input_form?.addEventListener("submit", (e) => input_form_submit(e, title_input!, description_input!, people_input!)) 
+input_form.addEventListener("submit", (e) => input_form_submit(e, title_input!, description_input!, people_input!)) 
