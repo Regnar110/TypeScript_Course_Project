@@ -69,11 +69,27 @@ function initProjectInputTemplate():Project_inputs {
 const {project_list, title_input, description_input, people_input, input_form}:Project_inputs = initProjectInputTemplate()
 
 const initializeProjectList = (project:Project[]) => {
-    let project_list_template_CLONE = project_list_template.content.cloneNode(true)
-    app_container.appendChild(project_list_template_CLONE);
     const lastProjectAdded:Project = project[project.length-1]
-    const appProjectListContainer = document.querySelector('.projects') as HTMLElement
-    console.log(appProjectListContainer.lastElementChild)
+    let project_input_template_CLONE: Node;
+    let next_project_template;
+        if(project.length  === 1) {
+            project_input_template_CLONE = project_list_template.content.cloneNode(true)
+            app_container.appendChild(project_input_template_CLONE);
+            const appProjectListContainer = document.querySelector('.projects') as HTMLElement
+            const projectsHeader = appProjectListContainer.firstElementChild!.firstElementChild
+            const projectUltag = appProjectListContainer.lastElementChild;
+            projectsHeader!.textContent = lastProjectAdded.title
+            projectUltag!.textContent = lastProjectAdded.description
+        } else {
+            next_project_template = project_list_template.content.cloneNode(true)
+            app_container.appendChild(next_project_template);
+            const appProjectListContainer = document.querySelectorAll('.projects')[project.length-1] as HTMLElement
+            console.log(appProjectListContainer)
+            const projectsHeader = appProjectListContainer.firstElementChild!.firstElementChild
+            const projectUltag = appProjectListContainer.lastElementChild;
+            projectsHeader!.textContent = lastProjectAdded.title
+            projectUltag!.textContent = lastProjectAdded.description
+        }
 }
 
 const initializeSingleProject = (project:Project) => {

@@ -46,11 +46,28 @@ function initProjectInputTemplate() {
 //Wywołanie inicjalizacji
 const { project_list, title_input, description_input, people_input, input_form } = initProjectInputTemplate();
 const initializeProjectList = (project) => {
-    let project_list_template_CLONE = project_list_template.content.cloneNode(true);
-    app_container.appendChild(project_list_template_CLONE);
     const lastProjectAdded = project[project.length - 1];
-    const appProjectListContainer = document.querySelector('.projects');
-    console.log(appProjectListContainer.lastElementChild);
+    let project_input_template_CLONE;
+    let next_project_template;
+    if (project.length === 1) {
+        project_input_template_CLONE = project_list_template.content.cloneNode(true);
+        app_container.appendChild(project_input_template_CLONE);
+        const appProjectListContainer = document.querySelector('.projects');
+        const projectsHeader = appProjectListContainer.firstElementChild.firstElementChild;
+        const projectUltag = appProjectListContainer.lastElementChild;
+        projectsHeader.textContent = lastProjectAdded.title;
+        projectUltag.textContent = lastProjectAdded.description;
+    }
+    else {
+        next_project_template = project_list_template.content.cloneNode(true);
+        app_container.appendChild(next_project_template);
+        const appProjectListContainer = document.querySelectorAll('.projects')[project.length - 1];
+        console.log(appProjectListContainer);
+        const projectsHeader = appProjectListContainer.firstElementChild.firstElementChild;
+        const projectUltag = appProjectListContainer.lastElementChild;
+        projectsHeader.textContent = lastProjectAdded.title;
+        projectUltag.textContent = lastProjectAdded.description;
+    }
 };
 const initializeSingleProject = (project) => {
     const appSingleProjectListEl = app_container.querySelector("li");
