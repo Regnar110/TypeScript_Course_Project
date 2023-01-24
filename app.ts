@@ -9,6 +9,43 @@
 //APLIKACJA NAPISANA PRZY ZASTOSOWANIE PARADYGMATU OOP
     //(OBJECT ORIENTED PROGRAMMING)
 
+
+//WALIDACJA USER INPUTU + Interfejs
+interface Validatable {
+    value: string | number;
+    require?: boolean;
+    minLength?: number;
+    maxLength?: number;
+    min?: number;
+    max?: number;
+}
+
+function validate(validatableInput: Validatable):boolean {
+    let isValid = true;
+    if(validatableInput.require){
+        isValid = isValid && validatableInput.value.toString().length !== 0 
+        //is valid będzie true jeżeli oba wyrażenia po = będą true.  czyli jeżeli
+        // isValid jest true i wyrazęnie po && true. Jeżeli jedno z nich jest false to 
+        // isValid stanie się false
+    }
+    if(validatableInput.minLength != null && typeof validatableInput.value === "string") { // sprawdzamy
+        // na początku czy minlength nie jest 0(co jest tzw falsy value). Jeżeli nnie byłoby tego
+        //sprawdzenia to nawet po wprowadzeniu zera to to sprawdzenia by sie uruchomiło
+        isValid = isValid && validatableInput.value.length >= validatableInput.minLength 
+    }
+    if(validatableInput.maxLength != null && typeof validatableInput.value === "string") {
+        isValid = isValid && validatableInput.value.length <= validatableInput.maxLength 
+    }
+    if(validatableInput.min != null && typeof validatableInput.value === "number") {
+        isValid = isValid && validatableInput.value >= validatableInput.min
+    }
+    if(validatableInput.max != null && typeof validatableInput.value === "number") {
+        isValid = isValid && validatableInput.value <= validatableInput.max
+    }
+    return isValid
+}
+
+//AUTOBIND - funkcja bindująca this do klasy (doczepoiona do metody)
 function AutoBind(_target:any, _methodName:string, descriptor:PropertyDescriptor) { // funkcja zwracająca nowy descriptor dla klasy ProjectInput
     // przyczepiony descriptor do metody, który binduje this tej metody do kontekstu klasy w której znajduje się metoda.
     const originalMethod = descriptor.value
@@ -62,15 +99,33 @@ class ProjectInput {
         this.configure()
     }
 
-    private gatherUserInput(): [string, string, number] | void {
+    private gatherUserInput(): [string, string, number] | void { // funkcja zbierajaca inputy
+        //użytkownika i sprawdzjąca ich poprawność
         const enteredTitle = this.titleInputElement.value;
         const enteredDescription = this.descriptionInputElement.value;
         const enteredPeople = this.peopleInputElement.value;
 
+        const titleValidatable: Validatable = {
+            value: enteredTitle,
+            require: true,
+        };
+        const descriptionValidatable: Validatable = {
+            value: enteredDescription,
+            require: true,
+            minLength: 5
+        };
+        const peopleValidatable: Validatable = {
+            value: +enteredPeople,
+            require: true,
+            min: 1,
+            max: 5
+        };
+
         if(
-            enteredTitle.length === 0 || 
-            enteredDescription.length === 0 || 
-            enteredPeople.length === 0) 
+            !validate(titleValidatable) ||
+            !validate(descriptionValidatable) ||
+            !validate(peopleValidatable)
+        )
         {
             alert("Invalid Input/ Please try again")
             return;
@@ -85,14 +140,15 @@ class ProjectInput {
         this.peopleInputElement.value = ""
     }
 
+
     @AutoBind // dekorstor bindujący "this" metody do klasy w której znajduje się metoda
     private submitHandler(e: Event) { // funkcja wywoływana przez event Listener formy.
         // weryfikuje wprowadzony przez użytkownika input i zatwierdza go
         e.preventDefault()
         const userInput = this.gatherUserInput();
-        if(Array.isArray(userInput)) {
+        if(Array.isArray(userInput)) { // sprawdzamy czy userinput zwróciony z gatherUseInput
+            // jest rzeczywiście tablicą. Funkcja powinna zwrócić tuples
             const [title, description, people] = userInput;
-            console.log(title, description, people)
         }
         this.clearInput()
     }
