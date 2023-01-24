@@ -1,114 +1,104 @@
 "use strict";
-const app_container = document.getElementById("app"); // app container 
-//TEMPLATES
-const project_input_template = document.getElementById("project-input");
-const single_project_template = document.getElementById("single-project");
-const project_list_template = document.getElementById("project-list");
-function Validator(target) {
-    console.log(target);
-}
-class Project_List {
-    constructor() {
-        this.projectList = [];
-    }
-    get showProjects() {
-        return this.projectList;
-    }
-    addProjectToList(project) {
-        this.projectList.push(project);
-    }
-}
-class Project {
-    constructor(title, description, people_number) {
-        this.title = title;
-        this.description = description;
-        this.people_number = people_number;
-    }
-}
-// Inicjalizacja project input Template
-function initProjectInputTemplate() {
-    let project_input_template_CLONE = project_input_template.content.cloneNode(true);
-    app_container.appendChild(project_input_template_CLONE);
-    const project_input_title = document.getElementById("title");
-    const project_input_description = document.getElementById("description");
-    const project_input_people_number = document.getElementById("people");
-    const project_input_form = document.getElementById("project_input_form");
-    const project_list = new Project_List(); //Instancja klasy Project_List służąca nam do zawierania
-    //w niej nowych projektów wprowadzonych przez użytkownika.
-    return {
-        project_list: project_list,
-        title_input: project_input_title,
-        description_input: project_input_description,
-        people_input: project_input_people_number,
-        input_form: project_input_form
+// APLIKACJA M DZIAŁAĆ W TEN SPOSÓB, ŻE UŻYTKOWNIK MOŻE WPROWADZIĆ PROJEKT
+// I POJAWIĄ SIĘ DWIE LISTY PROJEKTÓW POMIĘDZY KTÓRYMI UŻYTKOWNIK BĘDZIE MÓGŁ
+// PRZEZRZUCAĆ NA ZASADZIE DRAG AND DROP PROJEKTY.
+//PROJEKT OPIERA SIĘ NA TEMPLATE'ACH KTÓRE ZOSTANĄ WYRENDEROWANY KIEDY MY TEGO 
+//BĘDZIEMYC CHCIELI. NORMALNIE SĄ NIE WIDOCZNE, ALE MOGA BYĆ SIĘGNIĘTE PRZEZ JS
+// I PRZY JEGO ZASTOSOWANIU BĘDZIEMY DECYDOWAĆ KTÓRY TEMPLATE I KIEDY WYRENDEROWAC
+// ORAZ NA JAKICH WARUNKACH
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+//APLIKACJA NAPISANA PRZY ZASTOSOWANIE PARADYGMATU OOP
+//(OBJECT ORIENTED PROGRAMMING)
+function AutoBind(_target, _methodName, descriptor) {
+    // przyczepiony descriptor do metody, który binduje this tej metody do kontekstu klasy w której znajduje się metoda.
+    const originalMethod = descriptor.value;
+    const adjustedDescriptor = {
+        configurable: true,
+        get() {
+            const boundFunction = originalMethod.bind(this);
+            return boundFunction;
+        },
     };
+    return adjustedDescriptor;
 }
-//Wywołanie inicjalizacji
-const { project_list, title_input, description_input, people_input, input_form } = initProjectInputTemplate();
-const initializeProjectList = (project) => {
-    const lastProjectAdded = project[project.length - 1];
-    let project_input_template_CLONE;
-    let next_project_template;
-    if (project.length === 1) {
-        project_input_template_CLONE = project_list_template.content.cloneNode(true);
-        app_container.appendChild(project_input_template_CLONE);
-        const appProjectListContainer = document.querySelector('.projects');
-        const projectsHeader = appProjectListContainer.firstElementChild.firstElementChild;
-        const projectUltag = appProjectListContainer.lastElementChild;
-        projectsHeader.textContent = lastProjectAdded.title;
-        projectUltag.textContent = lastProjectAdded.description;
+class ProjectInput {
+    constructor() {
+        // w której użytkownik wprowadza dane i do div z id app do któego
+        // zostanie dołączona forma.
+        this.templateElement = document.getElementById("project-input"); // "!"" po wyrażeniu oznacza not null
+        this.hostElement = document.getElementById("app");
+        //hostElement to odnośnik do elementu DOM
+        // w którym będą renderowane poszczególne
+        //elementy aplikacji
+        //W kosntruktorze chcemy od razu przy inicjalizacji tej klasy 
+        //stworzyć element, który będzie wstrzykiwany do Div id="app"
+        const importedNode = document.importNode(this.templateElement.content, true);
+        //importedNode jest zmienną const której wartością jest Fragment dokumentu tj.
+        // zawartość templateElement wskazanego wyżej w konstruktorze. Drugi parametr określa
+        // czy metoda ImportNode() ma wykonać deep clone tego elementu tzn z jego wszystkimi
+        // zależnościami i dziećmi.
+        //żeby mieć dostęp do importedNode  w metodzie attach stworzyliśmy własciwość element
+        // w obiekcie instancji tej klasy. Ma on wartość pierwszego dziecka ImportedNode 
+        // czyli elementu <form></form>
+        this.element = importedNode.firstElementChild;
+        this.element.id = "user-input"; // dodanie id user-input do elementu celem nadania stylów
+        this.titleInputElement = this.element.querySelector("#title");
+        this.descriptionInputElement = this.element.querySelector("#description");
+        this.peopleInputElement = this.element.querySelector("#people");
+        this.attach(); // wywołujemy metodę attach w momencie gdy konstruktor jest uruchamiany.
+        this.configure();
     }
-    else {
-        next_project_template = project_list_template.content.cloneNode(true);
-        app_container.appendChild(next_project_template);
-        const appProjectListContainer = document.querySelectorAll('.projects')[project.length - 1];
-        console.log(appProjectListContainer);
-        const projectsHeader = appProjectListContainer.firstElementChild.firstElementChild;
-        const projectUltag = appProjectListContainer.lastElementChild;
-        projectsHeader.textContent = lastProjectAdded.title;
-        projectUltag.textContent = lastProjectAdded.description;
-    }
-};
-const initializeSingleProject = (project) => {
-    const appSingleProjectListEl = app_container.querySelector("li");
-    while (appSingleProjectListEl.firstChild && appSingleProjectListEl.lastChild) { // usuwa ostatnie node elementy. Tzn że będzie wyświetlany tylko ostatni projekt
-        appSingleProjectListEl.removeChild(appSingleProjectListEl.lastChild);
-    }
-    //Tworzenie elementów dzieci dla elementu li 
-    let singlePrHeader = document.createElement("h2");
-    let singlePrDescSpan = document.createElement("span");
-    let singlePrPeopleNUmSpan = document.createElement("span");
-    //Ustawiamy wartości dla elementów sekcji
-    singlePrDescSpan.textContent = `Project Description: ${project.description}`;
-    singlePrPeopleNUmSpan.textContent = `People commited to project: ${project.people_number}`;
-    singlePrHeader.textContent = project.title;
-    //tablica z poszczególnymi elementami, które zostaną doczepione jako dzieci do li
-    let childNodesForSingleProject = [singlePrHeader, singlePrDescSpan, singlePrPeopleNUmSpan];
-    for (let el of childNodesForSingleProject) { // dodanie stworzonych elementów do elementu rodzica LI
-        appSingleProjectListEl.appendChild(el);
-    }
-};
-const initializeProjectsTemplates = (project) => {
-    let single_project_template_CLONE = single_project_template.content.cloneNode(true);
-    app_container.appendChild(single_project_template_CLONE);
-    initializeSingleProject(project[project.length - 1]);
-    initializeProjectList(project); // stworzenie listy projektów
-};
-//EventListener dla przycisku zatwierdzania formy
-const input_form_submit = (e, ...htmlInputs) => {
-    e.preventDefault();
-    const [title_input, description_input, people_input] = htmlInputs;
-    if (title_input.value.length > 0 && description_input.value.length > 0 && +people_input.value > 0 && +people_input.value < 10) {
-        const project = new Project(title_input.value, description_input.value, +people_input.value);
-        project_list.addProjectToList(project);
-        const projecListArray = project_list.showProjects;
-        for (let el of htmlInputs) {
-            el.value = "";
+    gatherUserInput() {
+        const enteredTitle = this.titleInputElement.value;
+        const enteredDescription = this.descriptionInputElement.value;
+        const enteredPeople = this.peopleInputElement.value;
+        if (enteredTitle.length === 0 ||
+            enteredDescription.length === 0 ||
+            enteredPeople.length === 0) {
+            alert("Invalid Input/ Please try again");
+            return;
         }
-        initializeProjectsTemplates(projecListArray);
+        else {
+            return [enteredTitle, enteredDescription, +enteredPeople];
+        }
     }
-    else {
-        alert("User input fiels cant be empty");
+    clearInput() {
+        this.titleInputElement.value = "";
+        this.descriptionInputElement.value = "";
+        this.peopleInputElement.value = "";
     }
-};
-input_form.addEventListener("submit", (e) => input_form_submit(e, title_input, description_input, people_input));
+    submitHandler(e) {
+        // weryfikuje wprowadzony przez użytkownika input i zatwierdza go
+        e.preventDefault();
+        const userInput = this.gatherUserInput();
+        if (Array.isArray(userInput)) {
+            const [title, description, people] = userInput;
+            console.log(title, description, people);
+        }
+        this.clearInput();
+    }
+    configure() {
+        //event listener, który będzie wywoływał funkcję submitHandler
+        this.element.addEventListener("submit", this.submitHandler);
+        //wskazujemy żeby this odnosiło się do kontekstu funkcji configutre tj do klasy
+        //ProjectInput. IOnaczej w submitHandler this.titleInput będzie undefined bo this będzie
+        //odnosiło się do kontekstu addEventListenera czyliu do elementu do którego jest doczepiony.
+    }
+    attach() {
+        this.hostElement.insertAdjacentElement("afterbegin", this.element);
+        //InsertAdjacentElement() służy do wszystkichania elementu HTML
+        // Pierwszy argument to opis tego g dzie ma zostać wstrzyknięty element
+        //After begin oznacza że wstrzykniemy HTML Element w host element tj "<div id="app"></div>"
+        // zaraz po rozpoczęciu tego tagu(zaraz po deklaracji elementu div).
+        //Drugi parametr to element który będziemy wstrzykiwać
+    }
+}
+__decorate([
+    AutoBind // dekorstor bindujący "this" metody do klasy w której znajduje się metoda
+], ProjectInput.prototype, "submitHandler", null);
+const prjInput = new ProjectInput();
