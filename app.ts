@@ -10,6 +10,66 @@
     //(OBJECT ORIENTED PROGRAMMING)
 
 
+//PROJECT STATE MANAGEMENT
+
+type Listener = (items: Project[]) => void;
+
+class ProjectState {
+    private listeners:Listener[] = []
+    //Listeners to tablicja funkcji(odwołania funkcji- funtion references).
+    //Zamysł, który stoi za tą tablicą jest taki, że gdy cokolwiek się zmieni np
+    // po wywołaniu metody addProject() tej klasy to wtedy wywołujemy wszystkie funkcje
+    // zawarte w tablicy listeners tj. przepętlamy się przez nie i wywołujemy je przekazując im
+    // tablicę projects a dokładniej jej kopie używając
+    // metody slice() tj listenerFn(this.projects.slice()) w tym celu, żeby
+    // ta tablica nie mogła być modyfikowana z miejsca z którego pochodzi wywoływana
+    // metoda
+    private projects:Project[] = [];
+    private static instance: ProjectState
+
+    private constructor(){
+    }
+
+    static getInstance() { // metoda statyczna(Dostepna z zewnątrz kkasy bez 
+        // koniexxzności jej inicjalizacji.)
+        //Gdy jest wywołana wsprawdza czy instancja klasy ProjectState istnieje czy nie
+        // Jeżeli nie, zwraca nową instancję.
+        // Umozliwia ograniczenie inicjalizacji tej klasy do jednego egzemplarza
+        // na całą aplikację
+        if(this.instance) {
+            return this.instance;
+        }
+        this.instance = new ProjectState()
+        return this.instance
+    }
+
+    addListener(listenerFn: Listener) {
+        this.listeners.push(listenerFn);
+    }
+
+    addProject(title:string, description:string, numOfPeople:number) {
+        //metoda wywoływana w submitHandler() klasy ProjectInput. Przekazywane są do niej
+        // title, description i people czyli zwalidowane dane wprowadzone przez użytkownika
+        const newProject = new Project(
+            Math.random().toString(), 
+            title, 
+            description, 
+            numOfPeople,
+            ProjectStatus.Active
+        )
+        this.projects.push(newProject);
+        for (const listenerFn of this.listeners) {
+            listenerFn(this.projects.slice()) // przekazuejmy funkcji kopię projects = opis
+            // dlaczego wyżej.
+        }
+    }
+}
+const projectState = ProjectState.getInstance();
+//Dzięki powyższemu wywołaniu mamy gwarancję że zawsze będzie
+// tylko jedna instancja klasy ProjectState w całej aplikacji
+// Jest to tzw singleton Class
+
+
 //WALIDACJA USER INPUTU + Interfejs
 interface Validatable {
     value: string | number;
@@ -59,6 +119,9 @@ function AutoBind(_target:any, _methodName:string, descriptor:PropertyDescriptor
     return adjustedDescriptor;
 }
 
+//Klasa odpowiedzialna za renderowanie user Input Form, zbierania z niej informacji
+// wprowadzonych przez użytkownika oraz sprawdzania prawidłowości wprowadzonych
+// danych
 class ProjectInput {
     templateElement: HTMLTemplateElement;
     hostElement: HTMLDivElement;
@@ -149,6 +212,7 @@ class ProjectInput {
         if(Array.isArray(userInput)) { // sprawdzamy czy userinput zwróciony z gatherUseInput
             // jest rzeczywiście tablicą. Funkcja powinna zwrócić tuples
             const [title, description, people] = userInput;
+            projectState.addProject(title, description, people)
         }
         this.clearInput()
     }
@@ -160,7 +224,8 @@ class ProjectInput {
         //ProjectInput. IOnaczej w submitHandler this.titleInput będzie undefined bo this będzie
         //odnosiło się do kontekstu addEventListenera czyliu do elementu do którego jest doczepiony.
     }
-    private attach() {
+    private attach() { // funkcja dołączająca do hostelement element który ma zostać
+        //wyrenderowany w <div id="app"></div>
         this.hostElement.insertAdjacentElement("afterbegin", this.element)
         //InsertAdjacentElement() służy do wszystkichania elementu HTML
         // Pierwszy argument to opis tego g dzie ma zostać wstrzyknięty element
@@ -170,5 +235,96 @@ class ProjectInput {
     }
 }
 
-const prjInput = new ProjectInput()
+//ProjectList CLass
+class ProjectList {
+    templateElement: HTMLTemplateElement;
+    hostElement: HTMLDivElement;
+    element: HTMLElement;
+    assignedProjects: Project[] = [];
 
+    constructor(private type:"active" | "finished") {
+        this.templateElement = document.getElementById("project-list")! as HTMLTemplateElement; // "!"" po wyrażeniu oznacza not null
+        this.hostElement = document.getElementById("app")! as HTMLDivElement
+        const importedNode = document.importNode(this.templateElement.content, true);
+        this.element = importedNode.firstElementChild as HTMLElement
+        this.element.id = `${this.type}-projects`
+        //Tutaj dynamicznie dopasowujemy id projektu, w zależności czy,
+        //renderujemy tablicę aktywnych czy skończonych projektów. Type ma być
+        // zdefiniowany przy tworzeniu instancji klasy
+
+        //Dodajemy listener z instancji klasy ProjectState, który ma przekazywać z klasy
+        //ProjectState do klasy ProjectList listę sprawdzonych projektów, które ProjectState otrzymał z
+        // klasy ProjectInput.
+        //Poniższa funkcja uruchomi się jedynie gdy zostanie dodany nowy projekt
+        projectState.addListener((projects: Project[]) => {
+            // metoda filtrująca projekty na te Active i Finished. Ma to na celu rozdzielenie
+            // projektów na aktywne i zakończone. Domyslnie każdy dodany nowy projekt jest aktywny.
+
+            const relevantProjects = projects.filter(prj =>{
+                if(this.type === "active") { // jeżeli typ projektu to active to
+                    //zwracamy to wyrażenie. Czyli jeżeli prj odpowiada temu sprawdzeniu(jest true)
+                    // to zwracamy go do nowej tablicy tj relevantProjects
+                    return prj.projectStatus === ProjectStatus.Active
+                } 
+                return prj.projectStatus === ProjectStatus.Finished
+            })
+            this.assignedProjects = relevantProjects
+            this.renderProjects()
+        });
+
+        this.attach();
+        this.renderContent()
+    }
+
+    private renderProjects() {// funkcja wywoływana w listenerze klasy ProjectState umieszczonym
+        // w konstruktorze klasy ProjectList. Listener ten wywołuje metodę renderProject
+        // która na bazie mieszczonych projektów w właściwości assignedProjects renderuje listę
+        const listEl = document.getElementById(`${this.type}-projects-list`) as HTMLUListElement;
+        listEl.innerHTML = "";// to umożliwia nam zapobiegnięcie duplokowaniu
+        //wyświetlanych projektów. PRzed wyświetleniem nowej listy projektów, usuwamy tutaj
+        // starą listę i dodajemy dopeiro nową zaaktualizowaną z nowym projektem wprwadzonym przez
+        // użytkownika
+        for(const prjItem of this.assignedProjects) {
+            const listItem = document.createElement("li");
+            listItem.textContent = prjItem.title
+            listEl.appendChild(listItem)
+        }
+    }
+
+    private renderContent() { // funkcja renderująca content w ProjectList
+        const listId = `${this.type}-projects-list`;
+        this.element.querySelector("ul")!.id = listId;
+        this.element.querySelector("h2")!.textContent = this.type.toUpperCase() + " PROJECTS"
+        // powyżej nadajemy id dla <ul></ul> i dodajemy text content dla headera
+    } 
+
+    private attach() {
+        this.hostElement.insertAdjacentElement("beforeend", this.element)
+    }
+}
+
+
+//PROJECT CLASS
+
+enum ProjectStatus {
+    Active, Finished
+}
+
+//Klasa Project definiuje jaką strukturę powinien mieć nasz projekt
+// co pozwala później w innych klasach przy pracowaniu z konkretnymi projektami
+// na rozpoznanie TypeScriptowi z jakim typem danych pracujemy tj. typem Project
+class Project {
+
+    constructor(
+        public id:string, 
+        public title:string, 
+        public description:string, 
+        public people: number, 
+        public projectStatus: ProjectStatus
+        ) {}
+}
+
+
+const prjInput = new ProjectInput()
+const activePrjList = new ProjectList("active");
+const finishedPrjList = new ProjectList("finished")
