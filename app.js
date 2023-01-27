@@ -12,9 +12,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-class ProjectState {
+class State {
     constructor() {
         this.listeners = [];
+    }
+    addListener(listenerFn) {
+        this.listeners.push(listenerFn);
+    }
+}
+class ProjectState extends State {
+    constructor() {
+        super();
         //Listeners to tablicja funkcji(odwołania funkcji- funtion references).
         //Zamysł, który stoi za tą tablicą jest taki, że gdy cokolwiek się zmieni np
         // po wywołaniu metody addProject() tej klasy to wtedy wywołujemy wszystkie funkcje
@@ -52,6 +60,29 @@ class ProjectState {
     }
 }
 const projectState = ProjectState.getInstance();
+//Dzięki powyższemu wywołaniu mamy gwarancję że zawsze będzie
+// tylko jedna instancja klasy ProjectState w całej aplikacji
+// Jest to tzw singleton Class
+//BASE CLASS "Component" - klasa zawierająca wszystkie wspólne metody, właściwości i funkcjonalności
+// klas tej aplikacji. Służy to zawarcia ich w jednej klasie a następnie do dziedziczenia
+// z tej klasy do innych klas. Ma zapobiegać powtarzaniu kodu
+//Będzie to klasa generyczna(generic class) dzięki której gdy będziemy z niej dziedziczyć
+// to będziemy mogli ustalić konkretne typy
+class Component {
+    constructor(templateId, hostElementId, insertAtStart, newElementId) {
+        this.templateElement = document.getElementById(templateId);
+        this.hostElement = document.getElementById(hostElementId);
+        const importedNode = document.importNode(this.templateElement.content, true);
+        this.element = importedNode.firstElementChild;
+        if (newElementId) {
+            this.element.id = newElementId;
+        }
+        this.attach(insertAtStart);
+    }
+    attach(insertAtBeggining) {
+        this.hostElement.insertAdjacentElement(insertAtBeggining ? "afterbegin" : "beforeend", this.element);
+    }
+}
 function validate(validatableInput) {
     let isValid = true;
     if (validatableInput.require) {
@@ -92,31 +123,15 @@ function AutoBind(_target, _methodName, descriptor) {
 //Klasa odpowiedzialna za renderowanie user Input Form, zbierania z niej informacji
 // wprowadzonych przez użytkownika oraz sprawdzania prawidłowości wprowadzonych
 // danych
-class ProjectInput {
+class ProjectInput extends Component {
     constructor() {
         // w której użytkownik wprowadza dane i do div z id app do któego
         // zostanie dołączona forma.
-        this.templateElement = document.getElementById("project-input"); // "!"" po wyrażeniu oznacza not null
-        this.hostElement = document.getElementById("app");
-        //hostElement to odnośnik do elementu DOM
-        // w którym będą renderowane poszczególne
-        //elementy aplikacji
-        //W kosntruktorze chcemy od razu przy inicjalizacji tej klasy 
-        //stworzyć element, który będzie wstrzykiwany do Div id="app"
-        const importedNode = document.importNode(this.templateElement.content, true);
-        //importedNode jest zmienną const której wartością jest Fragment dokumentu tj.
-        // zawartość templateElement wskazanego wyżej w konstruktorze. Drugi parametr określa
-        // czy metoda ImportNode() ma wykonać deep clone tego elementu tzn z jego wszystkimi
-        // zależnościami i dziećmi.
-        //żeby mieć dostęp do importedNode  w metodzie attach stworzyliśmy własciwość element
-        // w obiekcie instancji tej klasy. Ma on wartość pierwszego dziecka ImportedNode 
-        // czyli elementu <form></form>
-        this.element = importedNode.firstElementChild;
-        this.element.id = "user-input"; // dodanie id user-input do elementu celem nadania stylów
+        super("project-input", "app", true, "user-input");
+        //odnosiło się do kontekstu addEventListenera czyliu do elementu do którego jest doczepiony.
         this.titleInputElement = this.element.querySelector("#title");
         this.descriptionInputElement = this.element.querySelector("#description");
         this.peopleInputElement = this.element.querySelector("#people");
-        this.attach(); // wywołujemy metodę attach w momencie gdy konstruktor jest uruchamiany.
         this.configure();
     }
     gatherUserInput() {
@@ -170,34 +185,38 @@ class ProjectInput {
         this.element.addEventListener("submit", this.submitHandler);
         //wskazujemy żeby this odnosiło się do kontekstu funkcji configutre tj do klasy
         //ProjectInput. IOnaczej w submitHandler this.titleInput będzie undefined bo this będzie
-        //odnosiło się do kontekstu addEventListenera czyliu do elementu do którego jest doczepiony.
     }
-    attach() {
-        //wyrenderowany w <div id="app"></div>
-        this.hostElement.insertAdjacentElement("afterbegin", this.element);
-        //InsertAdjacentElement() służy do wszystkichania elementu HTML
-        // Pierwszy argument to opis tego g dzie ma zostać wstrzyknięty element
-        //After begin oznacza że wstrzykniemy HTML Element w host element tj "<div id="app"></div>"
-        // zaraz po rozpoczęciu tego tagu(zaraz po deklaracji elementu div).
-        //Drugi parametr to element który będziemy wstrzykiwać
-    }
+    renderContent() { } // metoda wymagana przez klase z której diedziczymy
 }
 __decorate([
     AutoBind // dekorstor bindujący "this" metody do klasy w której znajduje się metoda
 ], ProjectInput.prototype, "submitHandler", null);
 //ProjectList CLass
-class ProjectList {
+class ProjectList extends Component {
     constructor(type) {
+        super("project-list", "app", false, `${type}-projects`);
         this.type = type;
         this.assignedProjects = [];
-        this.templateElement = document.getElementById("project-list"); // "!"" po wyrażeniu oznacza not null
-        this.hostElement = document.getElementById("app");
-        const importedNode = document.importNode(this.templateElement.content, true);
-        this.element = importedNode.firstElementChild;
-        this.element.id = `${this.type}-projects`;
+        //wywołujemy konstruktor klasy Component przy użyciu metody super();
         //Tutaj dynamicznie dopasowujemy id projektu, w zależności czy,
         //renderujemy tablicę aktywnych czy skończonych projektów. Type ma być
         // zdefiniowany przy tworzeniu instancji klasy
+        this.renderContent();
+        this.configure();
+    }
+    renderProjects() {
+        // w konstruktorze klasy ProjectList. Listener ten wywołuje metodę renderProject
+        // która na bazie mieszczonych projektów w właściwości assignedProjects renderuje listę
+        const listEl = document.getElementById(`${this.type}-projects-list`);
+        listEl.innerHTML = ""; // to umożliwia nam zapobiegnięcie duplokowaniu
+        //wyświetlanych projektów. PRzed wyświetleniem nowej listy projektów, usuwamy tutaj
+        // starą listę i dodajemy dopeiro nową zaaktualizowaną z nowym projektem wprwadzonym przez
+        // użytkownika
+        for (const prjItem of this.assignedProjects) {
+            new ProjectItem(this.element.querySelector("ul").id, prjItem);
+        }
+    }
+    configure() {
         //Dodajemy listener z instancji klasy ProjectState, który ma przekazywać z klasy
         //ProjectState do klasy ProjectList listę sprawdzonych projektów, które ProjectState otrzymał z
         // klasy ProjectInput.
@@ -216,31 +235,12 @@ class ProjectList {
             this.assignedProjects = relevantProjects;
             this.renderProjects();
         });
-        this.attach();
-        this.renderContent();
-    }
-    renderProjects() {
-        // w konstruktorze klasy ProjectList. Listener ten wywołuje metodę renderProject
-        // która na bazie mieszczonych projektów w właściwości assignedProjects renderuje listę
-        const listEl = document.getElementById(`${this.type}-projects-list`);
-        listEl.innerHTML = ""; // to umożliwia nam zapobiegnięcie duplokowaniu
-        //wyświetlanych projektów. PRzed wyświetleniem nowej listy projektów, usuwamy tutaj
-        // starą listę i dodajemy dopeiro nową zaaktualizowaną z nowym projektem wprwadzonym przez
-        // użytkownika
-        for (const prjItem of this.assignedProjects) {
-            const listItem = document.createElement("li");
-            listItem.textContent = prjItem.title;
-            listEl.appendChild(listItem);
-        }
     }
     renderContent() {
         const listId = `${this.type}-projects-list`;
         this.element.querySelector("ul").id = listId;
         this.element.querySelector("h2").textContent = this.type.toUpperCase() + " PROJECTS";
         // powyżej nadajemy id dla <ul></ul> i dodajemy text content dla headera
-    }
-    attach() {
-        this.hostElement.insertAdjacentElement("beforeend", this.element);
     }
 }
 //PROJECT CLASS
@@ -259,6 +259,27 @@ class Project {
         this.description = description;
         this.people = people;
         this.projectStatus = projectStatus;
+    }
+}
+//Klasa ProjectItem
+class ProjectItem extends Component {
+    get persons() {
+        return this.project.people === 1 ?
+            "1 person"
+            :
+                `${this.project.people} persons`;
+    }
+    constructor(hostId, project) {
+        super("single-project", hostId, false, project.id);
+        this.project = project;
+        this.configure();
+        this.renderContent();
+    }
+    configure() { }
+    renderContent() {
+        this.element.querySelector("h2").textContent = this.project.title;
+        this.element.querySelector("h3").textContent = this.persons + " assigned";
+        this.element.querySelector("p").textContent = this.project.description;
     }
 }
 const prjInput = new ProjectInput();
