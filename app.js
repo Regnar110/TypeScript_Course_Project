@@ -53,6 +53,17 @@ class ProjectState extends State {
         // title, description i people czyli zwalidowane dane wprowadzone przez użytkownika
         const newProject = new Project(Math.random().toString(), title, description, numOfPeople, ProjectStatus.Active);
         this.projects.push(newProject);
+        this.updateListeners();
+    }
+    moveProject(projectId, newStatus) {
+        // z jednej listy na drugą itd
+        const project = this.projects.find(prj => prj.id === projectId);
+        if (project && project.projectStatus !== newStatus) {
+            project.projectStatus = newStatus;
+            this.updateListeners();
+        }
+    }
+    updateListeners() {
         for (const listenerFn of this.listeners) {
             listenerFn(this.projects.slice()); // przekazuejmy funkcji kopię projects = opis
             // dlaczego wyżej.
@@ -216,7 +227,31 @@ class ProjectList extends Component {
             new ProjectItem(this.element.querySelector("ul").id, prjItem);
         }
     }
+    dragOverHandler(event) {
+        if (event.dataTransfer && event.dataTransfer.types[0] === "text/plain") {
+            //sprawdzamy czy obiekt nad ktorym draggowany obiekt znajduje się jest
+            //prawidłowym drop targetem i czy typ data transferu dla dragowanego obiektu
+            // to text/plain
+            event.preventDefault();
+            //dlaczego preventDefault? Bo w JS domyślnie drag and drop events są ustawione
+            //jako takie eventy które uniemożliwiają domyślnie przerzuczenie obiektu.
+            // Prevent default umożliwia nam przerzucanie draggowanego obiektu
+            const listEl = this.element.querySelector("ul");
+            listEl.classList.add("droppable");
+        }
+    }
+    dropHandler(event) {
+        const prjId = event.dataTransfer.getData("text/plain");
+        projectState.moveProject(prjId, this.type === 'active' ? ProjectStatus.Active : ProjectStatus.Finished);
+    }
+    dragLeaveHandler(_event) {
+        const listEl = this.element.querySelector("ul");
+        listEl === null || listEl === void 0 ? void 0 : listEl.classList.remove("droppable");
+    }
     configure() {
+        this.element.addEventListener("dragover", this.dragOverHandler);
+        this.element.addEventListener("dragleave", this.dragLeaveHandler);
+        this.element.addEventListener("drop", this.dropHandler);
         //Dodajemy listener z instancji klasy ProjectState, który ma przekazywać z klasy
         //ProjectState do klasy ProjectList listę sprawdzonych projektów, które ProjectState otrzymał z
         // klasy ProjectInput.
@@ -243,6 +278,15 @@ class ProjectList extends Component {
         // powyżej nadajemy id dla <ul></ul> i dodajemy text content dla headera
     }
 }
+__decorate([
+    AutoBind
+], ProjectList.prototype, "dragOverHandler", null);
+__decorate([
+    AutoBind
+], ProjectList.prototype, "dropHandler", null);
+__decorate([
+    AutoBind
+], ProjectList.prototype, "dragLeaveHandler", null);
 //PROJECT CLASS
 var ProjectStatus;
 (function (ProjectStatus) {
@@ -275,13 +319,29 @@ class ProjectItem extends Component {
         this.configure();
         this.renderContent();
     }
-    configure() { }
+    dragStartHandler(event) {
+        //dataTransfer to metoda obiektu DragEvent właściwości event. Umożliwa
+        // transfer draggowanych danych do obiektu w którym ten draggowany obiekt
+        // zostanie zdroppowany
+        event.dataTransfer.setData("text/plain", this.project.id);
+        event.dataTransfer.effectAllowed = "move";
+    }
+    dragEndHandler(_event) {
+        console.log("drag end");
+    }
+    configure() {
+        this.element.addEventListener("dragstart", this.dragStartHandler);
+        this.element.addEventListener("dragend", this.dragEndHandler);
+    }
     renderContent() {
         this.element.querySelector("h2").textContent = this.project.title;
         this.element.querySelector("h3").textContent = this.persons + " assigned";
         this.element.querySelector("p").textContent = this.project.description;
     }
 }
+__decorate([
+    AutoBind
+], ProjectItem.prototype, "dragStartHandler", null);
 const prjInput = new ProjectInput();
 const activePrjList = new ProjectList("active");
 const finishedPrjList = new ProjectList("finished");

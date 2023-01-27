@@ -9,6 +9,30 @@
 //APLIKACJA NAPISANA PRZY ZASTOSOWANIE PARADYGMATU OOP
     //(OBJECT ORIENTED PROGRAMMING)
 
+// DRAG & DROP INTERFACES 
+
+interface Draggable {// możemy dodać draggable do jakiejkolwiek klasy, która renderuje
+    //element który może być chwytalny - w naszym przypadku projectItem class
+    dragStartHandler(event: DragEvent):void;
+    dragEndHandler(event: DragEvent):void;
+}
+
+interface DragTarget { // interfejs, który będzie używany to stworzenia kontraktu między
+    // nim a klasami, które powinny być celem dla chwytalnego obiektu tzn miejscem
+    // gdzie ten obiekt może być przeniesiony i wrzucony
+    dragOverHandler(event: DragEvent):void;// funkcja event listenera, która musi być implementowana przy funkcjonalności
+    //drag and drop. Służy do poinformowania przeglądarki w JavaScript o tym że rzecz nad którą
+    // przesuwamy jakiś obiekt jest właściwym celem drag eventu tzn że na tą rzecz możemy zrzucić
+    // draggowany obiekt
+
+    dropHandler(event: DragEvent):void; // Metoda event listenera służaca do tego żeby odpowiednio zareagować
+    // na zrzucenie obiektu do drop targetu
+
+    dragLeaveHandler(event: DragEvent):void; // metoda eventlistenera slużąca do wykrycia kiedy chwytany obiekt, 
+    // opuszcza strefę nad obiektem do którego może być wrzucony chwytany obiekt. Możemy dzięki temu
+    // np zmienic kolor backgroundd itd. 
+
+}
 
 //PROJECT STATE MANAGEMENT
 
@@ -66,6 +90,19 @@ class ProjectState extends State<Project> {
             ProjectStatus.Active
         )
         this.projects.push(newProject);
+        this.updateListeners();
+    }
+
+    moveProject(projectId:string, newStatus: ProjectStatus) { //metoda zmieniająca status projektu, gdy ten  jest przerzucany
+        // z jednej listy na drugą itd
+        const project = this.projects.find(prj => prj.id === projectId)
+        if(project && project.projectStatus !== newStatus) {
+            project.projectStatus = newStatus
+            this.updateListeners();
+        }
+    }
+
+    private updateListeners() {
         for (const listenerFn of this.listeners) {
             listenerFn(this.projects.slice()) // przekazuejmy funkcji kopię projects = opis
             // dlaczego wyżej.
@@ -268,7 +305,8 @@ class ProjectInput extends Component<HTMLDivElement, HTMLFormElement> {
 }
 
 //ProjectList CLass
-class ProjectList extends Component<HTMLDivElement, HTMLElement> {
+class ProjectList extends Component<HTMLDivElement, HTMLElement>
+implements DragTarget {
     assignedProjects: Project[] = [];
     constructor(private type:"active" | "finished") {
         super("project-list","app", false, `${type}-projects`);
@@ -293,8 +331,36 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
         }
 
     }
+    @AutoBind
+    dragOverHandler(event: DragEvent) {
+        if(event.dataTransfer && event.dataTransfer.types[0] === "text/plain") {
+            //sprawdzamy czy obiekt nad ktorym draggowany obiekt znajduje się jest
+            //prawidłowym drop targetem i czy typ data transferu dla dragowanego obiektu
+            // to text/plain
+            event.preventDefault();
+            //dlaczego preventDefault? Bo w JS domyślnie drag and drop events są ustawione
+            //jako takie eventy które uniemożliwiają domyślnie przerzuczenie obiektu.
+            // Prevent default umożliwia nam przerzucanie draggowanego obiektu
+            const listEl = this.element.querySelector("ul")!;
+            listEl.classList.add("droppable");
+        }
+
+    }
+    @AutoBind
+    dropHandler(event: DragEvent) {
+        const prjId = event.dataTransfer!.getData("text/plain");
+        projectState.moveProject(prjId, this.type === 'active'? ProjectStatus.Active : ProjectStatus.Finished)
+    }
+    @AutoBind
+    dragLeaveHandler(_event: DragEvent) {
+        const listEl = this.element.querySelector("ul");
+        listEl?.classList.remove("droppable");
+    }
 
     configure() {
+        this.element.addEventListener("dragover", this.dragOverHandler);
+        this.element.addEventListener("dragleave", this.dragLeaveHandler);
+        this.element.addEventListener("drop", this.dropHandler);
         //Dodajemy listener z instancji klasy ProjectState, który ma przekazywać z klasy
         //ProjectState do klasy ProjectList listę sprawdzonych projektów, które ProjectState otrzymał z
         // klasy ProjectInput.
@@ -346,7 +412,8 @@ class Project {
 }
 
 //Klasa ProjectItem
-class ProjectItem extends Component<HTMLUListElement, HTMLLIElement>{
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement>
+ implements Draggable {
 
     private project:Project;
 
@@ -367,7 +434,23 @@ class ProjectItem extends Component<HTMLUListElement, HTMLLIElement>{
         this.renderContent()
     }
 
-    configure(){}
+    @AutoBind
+    dragStartHandler(event: DragEvent) {
+        //dataTransfer to metoda obiektu DragEvent właściwości event. Umożliwa
+        // transfer draggowanych danych do obiektu w którym ten draggowany obiekt
+        // zostanie zdroppowany
+        event.dataTransfer!.setData("text/plain", this.project.id)
+        event.dataTransfer!.effectAllowed = "move";
+    }
+
+    dragEndHandler(_event: DragEvent) {
+        console.log("drag end")
+    }
+
+    configure(){
+        this.element.addEventListener("dragstart", this.dragStartHandler)
+        this.element.addEventListener("dragend", this.dragEndHandler)
+    }
 
     renderContent() {
         this.element.querySelector("h2")!.textContent = this.project.title;
