@@ -1,7 +1,4 @@
 //PROJECT CLASS
-
-namespace  App {
-
     export enum ProjectStatus {
         Active, Finished
     }
@@ -16,4 +13,3 @@ namespace  App {
             public projectStatus: ProjectStatus
             ) {}
     }
-}

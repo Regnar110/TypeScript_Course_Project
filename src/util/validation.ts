@@ -1,4 +1,3 @@
-namespace App {
     //WALIDACJA USER INPUTU + Interfejs
     export interface Validatable {
         value: string | number;
@@ -28,4 +27,3 @@ namespace App {
         }
         return isValid
     }
-}
