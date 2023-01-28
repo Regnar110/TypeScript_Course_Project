@@ -1,0 +1,59 @@
+Name spaces działają na takiej zasadzie jak w pliku drag-drop-interfaces.ts
+Tworzymy w pliku przestrzeń nazw (namespace) o np nazwie APP.
+W pliku app.ts "importujemy" ten namespace przy użyciu syntaxu
+ który jest znany tylko TS a nie Vanilla JS:
+
+ /// <reference path="drag-drop-interfaces.ts" />
+
+ muszą być tu trzy "/"
+
+ Dzięki temu namespace App jest dostepny w app.ts
+ Teraz żeby używać interfejsów z drag-drop-interfaces.ts 
+ w app.ts musimy zawrzeć cały plik app ts w namespace o tej samej nazwie co w
+ drag-drop-interface.ts
+
+ 2.
+
+ Powyżej w namespace APp zawarliśmy interfejsy, które nie są kompilowane do 
+  Vanilla JS bo w nim nie istnieją. Jest to tylko rzecz istniejąca w TS.
+
+Co jeżeli utorzymy nowy plik project-model.ts w którym bedzie namespace App
+ale będzie on zawierał kod, który zostanie skompilowany do produkcji?
+Kod który Vanilla JS będzie rozumiał?
+Będzie zawietał klasę Project + enum Type.
+Wtedy otrzymamy błąd. Ponieważ syntac "importowania" namespace z innych plików
+polega na tym że wskazujemy TSowi gdzie znajdują się poszczególne
+przestrzenie nazw. Jednak gdy dochodzi do kompilacji to TS rozdziela 
+skompilowane pliki gdzie są namespace na pojedyńcze pliki javascript.
+Przez co dochodzi do sytuacji, w której w app.ts nie możemy utworzyć
+instancji klasy Project znajdującej się w project-model.ts mimo że,
+"importujemy" ją z namespace.
+
+Rozwiązaniem jest ustawienie w tsconfig.ts a dokładniej 
+
+outfile: "/"
+
+Tutaj wprowadzamy nazwę pliku do któreg omają być kompilowane wszystkie nasze 
+pliki ts. dzieki temu pliki Ts będą kompilowane do jednego pliku JS, przez co
+nie będzie dochodziło do rozdzielenia funkcjonalności aplikacji.
+
+czyli np outfile: "/bundle.js"
+
+Ponadto żeby to działało musimy zmienic 
+
+module: "commonjs"
+na
+module: "amd"
+
+
+
+UWAGA!!!
+
+NIE powinniśmy zawierać wszystkich importów w jednym pliku. 
+Jeżeli jakiś namespace potrzebuje funkcjonalności z innego pliku to powinniśmy
+importować go bezpośrednio do tego pliku. Nie powinniścmy
+importować wszystkiego globalnie do jednego pliku np app.ts!!!
+
+
+NAMESPACES nie jest koniecznie najlepszym sposobem na modularyzację kodu.
+Istnieje jeszcze możliwość użycia import i export z ES6
